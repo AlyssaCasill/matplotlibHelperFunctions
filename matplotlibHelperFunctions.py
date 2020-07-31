@@ -60,7 +60,7 @@ def createGroupedLists(dataA,dataB,num):
         groups.append(varSorted[i:j])
     return(edges,lists,groups)
 
-def xyDataDict(rates,variable,n,output="groupedData"):
+def xyDataDict(dataA,dataB,n,output="groupedData"):
     """
     Creates dataDict based on two lists of data. Data A will be put into groups keyed by ranges of Data B.
 
@@ -71,7 +71,7 @@ def xyDataDict(rates,variable,n,output="groupedData"):
     Options:
     output (if groupedData, will return dictionary keyed by group bounds where the values are lists of data in those groups. if not, will return dictionary keyed by group bound where the values are the lists of data making up the groups, originally used to split up the data)
     """
-    edges,lists,groups = createGroupedLists(rates,variable,n)
+    edges,lists,groups = createGroupedLists(dataA,dataB,n)
     dataDict = dict()
     if output == "groupedData":
         for bounds,data in zip(edges,lists):
@@ -252,7 +252,7 @@ def CDF(dataDict,plotPath,xname,title="",log="N",c=Viridis_20.mpl_colormap):
         x = sorted(dataDict[k])
         y = [(x.index(i)+1)/len(x) for i in x]
         color = cmap(float(labels.index(k))/N)
-        plt.plot(x,y,c=color,label=k+" n="+str(len(dataDict[k])))
+        plt.plot(x,y,c=color,label=str(k)+" n="+str(len(dataDict[k])))
     plt.legend()
     plt.title(title)
     plt.xlabel(xname)
@@ -348,7 +348,7 @@ def kdeScatterPlot(dataA,dataB,plotPath,xname="",yname="",log="Y",logaxis="both"
     plt.savefig(plotPath)
     plt.close()   
 
-def ViolinPlot(dataDict,plotPath,xname,yname,log):
+def violinPlot(dataDict,plotPath,xname,yname,log):
     """
     Creates a violin plot of input data.
 
@@ -387,7 +387,27 @@ def ViolinPlot(dataDict,plotPath,xname,yname,log):
 if __name__ == "__main__":
     from numpy import random
 
-    testDataX = random.rand(50)
-    testDataY = random.rand(50)
+    testDataX = random.rand(2000)
+    testDataY = random.rand(2000)
+
+    histogram(testDataX,"C:\\Users\\acasill\\Desktop\\graphTests\\example_histogram.png",log="N")
+
+    kdeScatterPlot(testDataX,testDataY,"C:\\Users\\acasill\\Desktop\\graphTests\\example_kdeScatter.png","x","y",log="N")
+
+    dataDict = xyDataDict(testDataX,testDataY,5)
+
+    CDF(dataDict,"C:\\Users\\acasill\\Desktop\\graphTests\\example_cdf.png","x","example")
+
+    boxPlot(dataDict,"C:\\Users\\acasill\\Desktop\\graphTests\\example_boxPlot.png","X","Y",log="N")
+
+    violinPlot(dataDict,"C:\\Users\\acasill\\Desktop\\graphTests\\example_violinplot.png","x","y",log="N")
+
+    dataOut("C:\\Users\\acasill\\Desktop\\graphTests\\example_data.txt",dataDict)
+
+    ks = groupStats(dataDict,test="ks")
+    groupStatsDataOut("C:\\Users\\acasill\\Desktop\\graphTests\\example_ks_stats.txt",ks)
+
+
+
 
 
