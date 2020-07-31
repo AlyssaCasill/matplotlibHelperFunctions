@@ -160,6 +160,9 @@ def dataOut(outfileName,dataDict):
 """
 SECTION 3
 These functions make graphs of input data.
+
+To Update:
+Make appearance of all graphs easier to manipulate and improved for publication
 """
 
 def histogram(data,plotPath,log="Y",frac="N"):
