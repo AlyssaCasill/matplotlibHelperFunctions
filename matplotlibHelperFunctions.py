@@ -13,9 +13,154 @@ from matplotlib import pyplot as plt
 import palettable   
 from palettable.cmocean.sequential import Thermal_20_r, Ice_20_r
 from palettable.matplotlib import Viridis_20
+import itertools
+import math
 import scipy.stats as ss
 from scipy.stats import gaussian_kde
 import numpy as np
+
+"""
+SECTION 1
+These functions can be used to manipulate data into a format that works with matplotlibHelperFunctions
+
+Potential updates:
+Make dataDict a class? So that it would know how to make itself or read one in and perform calculations/make graphs?
+"""
+                
+def createGroupedLists(dataA,dataB,num):
+    """
+    Groups data A based on data B.
+
+    Input: 
+    Two lists of floats: dataA will be broken up into groups based on the status of the matched value in dataB
+    num = number of groups
+
+    Return:
+    List of tuples denoting the edges of each group
+    List of lists of values in each group (from Data A)
+    List of values in each group (from Data B)
+    """
+    num = int(num)
+    zipped2 = sorted([(i,j) for i,j in zip(dataB,dataA)])
+#    zipped2.sort()
+    zipped = [i for i in zipped2 if not math.isnan(i[1])]
+    div = int(len(zipped)/num)
+    varSorted = [i[0] for i in zipped]
+    zippedSorted = [i[1] for i in zipped]
+    bounds1 = [i for i in range(0,len(zippedSorted)+1,div)][:-1]
+    bounds2 = [i for i in range(0,len(zippedSorted)+1,div)][1:-1]
+    bounds2.append(len(zippedSorted))
+    edges = []
+    for i,j in zip(bounds1,bounds2):
+        edges.append((varSorted[i],varSorted[j-1]))
+    lists = []
+    groups = []
+    for i,j in zip(bounds1,bounds2):
+        lists.append(zippedSorted[i:j])
+        groups.append(varSorted[i:j])
+    return(edges,lists,groups)
+
+def xyDataDict(rates,variable,n,output="groupedData"):
+    """
+    Creates dataDict based on two lists of data. Data A will be put into groups keyed by ranges of Data B.
+
+    Input: 
+    Two lists of floats: dataA will be broken up into groups based on the status of the matched value in dataB
+    n = number of groups
+
+    Options:
+    output (if groupedData, will return dictionary keyed by group bounds where the values are lists of data in those groups. if not, will return dictionary keyed by group bound where the values are the lists of data making up the groups, originally used to split up the data)
+    """
+    edges,lists,groups = createGroupedLists(rates,variable,n)
+    dataDict = dict()
+    if output == "groupedData":
+        for bounds,data in zip(edges,lists):
+            dataDict[bounds] = data 
+        return(dataDict)
+    else:
+        for bounds,data in zip(edges,groups):
+            dataDict[bounds] = data 
+        return(dataDict)
+
+"""
+SECTION 2
+These functions work with the dataDict data structure to calculate statistics and output data
+"""
+
+def groupStats(dataDict,test="mwu"):
+    """
+    Calculates statistical significance of differences between all pairings within a dataDict. Currently uses either a Mann-Whitney U test or a KS test.
+
+    Input: 
+    Data dictionary: dataDict[group]=[list of values in group]
+    test (either mwu or ks)
+
+    Return:
+    Dictionary [(groupA,groupB)] = [mean1,median1,n1,mean2,median2,n2,pval]
+    """
+    ttest = dict()
+    for x in dataDict.keys():
+        for y in dataDict.keys():
+            if x!=y and not ((x,y) in ttest.keys()) and not ((y,x) in ttest.keys()):
+                mean1 = np.mean(dataDict[x])
+                mean2 = np.mean(dataDict[y])
+                median1 = np.median(dataDict[x])
+                median2 = np.median(dataDict[y])
+                n1 = len(dataDict[x])
+                n2 = len(dataDict[y])
+                if test == "mwu":
+                    pval = ss.mannwhitneyu(dataDict[x],dataDict[y])[1]
+                elif test == "ks":
+                    pval = ss.ks_2samp(dataDict[x],dataDict[y],mode='asymp')[1]
+                ttest[(x,y)]=[mean1,median1,n1,mean2,median2,n2,pval]
+    return(ttest)
+
+def groupStatsDataOut(outfileName,statsDict):
+    """
+    Prints statistics dictionary to file.
+
+    Input: 
+    outfileName (path to output file)
+    statsDict (statistics dictionary)
+    """
+    outfile = open(outfileName,"w")
+    outfile.write("pair\tmean1\tmedian1\tn1\tmean2\tmedian2\tn2\tmwpval\n")
+    for k,v in statsDict.items():
+        outfile.write(str(k)+"\t"+"\t".join([str(i) for i in v])+"\n")
+    outfile.close()
+
+def dataOut(outfileName,dataDict):
+    """
+    Prints data dictionary to file (optimized for use in graphpad prism).
+
+    Input: 
+    outfileName (path to output file)
+    dataDict (data dictionary)
+    """
+    outfile = open(outfileName,"w")
+    sortedKeys = sorted(dataDict.keys())
+    labels = []
+    data = []
+    for i in sortedKeys:
+        labels.append(i)
+        data.append(dataDict[i])
+    outfile.write("\t".join([str(i) for i in labels]))
+    outfile.write("\n")
+    zipped = [i for i in itertools.zip_longest(*data,fillvalue="")]
+    zipped2 = [list(i) for i in zipped]
+    for x in zipped2:
+        xx = []
+        for i in x:
+            try:
+                xx.append(str(i))
+            except ValueError:
+                xx.append("")
+        outfile.write("\t".join(xx)+"\n")
+
+"""
+SECTION 3
+These functions make graphs of input data.
+"""
 
 def histogram(data,plotPath,log="Y",frac="N"):
     """
